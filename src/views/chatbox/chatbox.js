@@ -1,4 +1,4 @@
-import React, { useState,useEffect,useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import TextField from '@material-ui/core/TextField';
 import Paper from '@material-ui/core/Paper';
 import IconButton from '@material-ui/core/IconButton';
@@ -11,11 +11,15 @@ const Chatbot = () => {
   const messagesEndRef = useRef(null);
   const [inputValue, setInputValue] = useState('');
 
-  const handleMessageSubmit = (e) => {
+  const handleMessageSubmit = async (e) => {
     e.preventDefault();
     const userInput = e.target.message.value;
-    const botResponse = getBotResponse(userInput);
-    setMessages([...messages, { text: botResponse, sender: 'bot' }]);
+    try {
+      const botResponse = await getBotResponse(userInput);
+      setMessages([...messages, { text: botResponse, sender: 'bot' }]);
+    } catch (error) {
+      console.error('Error:', error);
+    }
     setInputValue('');
     e.target.reset();
   };
@@ -26,31 +30,29 @@ const Chatbot = () => {
     setMessages(updatedMessages);
   };
 
-  const getBotResponse = (userInput) => {
-    // Hardcoded AI responses
-    const responses = {
-        'hi': 'Hello! How can I assist you today?',
-        'bye': 'Goodbye! Have a great day!',
-        'how are you': 'I am just a bot, but thank you for asking!',
-    };
-
+  const getBotResponse = async(userInput) => {
     const employeesData = [
-      { name: 'rajkumar', task: 'IV-567', completion: 80, balance: 20},
-      { name: 'ram', task: 'IV-537', completion: 50, balance: 20 },
-      { name: 'dharan', task: 'IV-527', completion: 40, balance: 20 },
-      { name: 'pradeep', task: 'IV-560', completion: 90, balance: 20 },
-      { name: 'arun', task: 'IV-588', completion: 40, balance: 0 }
-  ];
+      { name: 'rajkumar', task: 'IV-567', completion: 80, balance: 20,birthday:"12-12-1998"},
+      { name: 'ram', task: 'IV-537', completion: 50, balance: 20,birthday:"2-12-1994" },
+      { name: 'dharan', task: 'IV-527', completion: 40, balance: 20,birthday:"23-06-1994" },
+      { name: 'pradeep', task: 'IV-560', completion: 90, balance: 20,birthday:"24-02-1996" },
+      { name: 'arun', task: 'IV-588', completion: 40, balance: 0,birthday:"20-04-1996" }
+    ];
 
     const lowerCaseInput = userInput.toLowerCase();
     let extract = lowerCaseInput.split(' ');
     if(userInput.toLowerCase() === 'all employee status' || userInput.toLowerCase() === 'team status') {
       return employeesData.map(employee => `${employee.name} working on ${employee.task} has completed ${employee.completion}%`).join('\n');
     }
-   if (extract.includes('employee') || extract.includes('status')) {
+    if (extract.includes('employee') || extract.includes('status')) {
       const employeeName = extract.find(word => employeesData.some(emp => emp.name === word));
       const employee = employeesData.find(emp => emp.name === employeeName);
       return employee ? `${employee.name} working on ${employee.task} has completed ${employee.completion}%    \n` : "Sorry, I couldn't find information about that employee.";
+    }
+    if (extract.includes('birthday')) {
+      const employeeName = extract.find(word => employeesData.some(emp => emp.name === word));
+      const employee = employeesData.find(emp => emp.name === employeeName);
+      return employee ? `${employee.name} birthday on ${employee.birthday} \n` : "Sorry, I couldn't find information about that employee.";
     }
     if(extract.includes('connect')) {
       if(!extract.find(word => employeesData.some(emp => emp.name === word))){
@@ -64,7 +66,8 @@ const Chatbot = () => {
       return 'Your team size is 5';
     }
     if(extract.includes('apply') && extract.includes('leave')) {
-      return 'Leave applied successfully';
+      const employee = employeesData.find(emp => emp.name === "rajkumar");
+      return `Leave applied successfully. Remaing Leave Balance - ${employee.balance-1}`;
     }
     if(extract.includes('assign')) {
       if(!extract.find(word => employeesData.some(emp => emp.name === word))){
@@ -75,22 +78,55 @@ const Chatbot = () => {
       return `Task assigned to ${employee.name} successfully`;
     }
     else{
-      return responses[lowerCaseInput] || "I'm sorry, I didn't understand that. Can you please rephrase?";
+      const responses = await main(userInput);
+      return responses;
     }
-};
+  };
 
+  async function makeApiRequest(model, data) {
+    const apiKey ='AIzaSyCKxvem4gYirnMu3h4YoQ4T5mR8-P01IMU';
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const requestOptions = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    };
 
-const userInput = "employee status";
-const botResponse = getBotResponse(userInput.toLowerCase());
+    try {
+      const response = await fetch(apiUrl, requestOptions);
+      const responseData = await response.json();
+      return responseData;
+    } catch (error) {
+      console.error('Error:', error);
+      throw error;
+    }
+  }
 
-if (botResponse === "I'm sorry, I didn't understand that. Can you please rephrase?") {
-    // If the user input doesn't match any predefined responses
-    console.log(generateResponse());
-} else {
-    console.log(botResponse);
-}
+  async function main(string) {
+    const model = 'gemini-pro';
+    const userInput = {
+      contents: [
+        {
+          parts: [
+            {
+              text:string ,
+            },
+          ],
+        },
+      ],
+    };
 
-
+    try {
+      const response = await makeApiRequest(model, userInput);
+      const res = response.candidates[0].content.parts[0].text;
+      return res;
+    } catch (error) {
+      console.error('Error:', error);
+      throw error;
+    }
+  }
 
   useEffect(() => {
     if (messagesEndRef.current>0) {
