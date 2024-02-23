@@ -24,6 +24,9 @@ import DepositWithdraw from 'src/views/dashboard/DepositWithdraw'
 import SalesByCountries from 'src/views/dashboard/SalesByCountries'
 
 const Dashboard = () => {
+  const handleOpenGoogleCalendar = () => {
+    window.open('https://calendar.google.com/', '_blank');
+  };
   return (
     <ApexChartWrapper>
       <Grid container spacing={7.8}>
@@ -64,7 +67,7 @@ const Dashboard = () => {
                 stats='3'
                 trend='negative'
                 title='Today Meetings'
-                subtitle={<Button fullWidth variant='contained'>
+                subtitle={<Button fullWidth variant='contained' onClick={handleOpenGoogleCalendar}>
                 View</Button>}
                 icon={<BriefcaseVariantOutline />}
               />
